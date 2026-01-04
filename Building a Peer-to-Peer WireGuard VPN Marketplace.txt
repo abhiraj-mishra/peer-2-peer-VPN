@@ -1,0 +1,63 @@
+The Core Concept: The "Control Plane"
+You are not building the VPN tunnel itself; WireGuard does that. You are building the Control Plane (the website) that acts as the coordinator
+,
+.
+The Workflow you must implement:
+1. Provider (Exit Node) generates a WireGuard Key pair.
+2. Provider tells your Website their Public Key and Public IP/Port.
+3. Client (User) pays and provides their Public Key.
+4. Website generates a configuration file (wg0.conf) for both parties that peers them together.
+--------------------------------------------------------------------------------
+Step-by-Step Implementation Plan (7 Days)
+Days 1-2: The Database & Key Exchange (The Marketplace)
+You need a database to store the "handshake" information. Unlike a central VPN server, your website stores the keys to introduce the peers.
+Database Schema:
+• Users Table: ID, Name, Wallet Balance.
+• Nodes Table (Providers): Provider_ID, Public_IP, Listen_Port, WireGuard_Public_Key, Price_Per_GB.
+• Connections Table (Active Tunnels): Client_Public_Key, Provider_Public_Key, AllowedIPs (The internal VPN IP, e.g., 10.0.0.2).
+The Logic: When a Client selects a Provider, your website acts as the "Signaling Mechanism"
+,
+. You must generate a config block for the Client that looks like this:
+
+[Peer]
+PublicKey = <Provider_Public_Key_From_DB>
+Endpoint = <Provider_Public_IP>:<Listen_Port>
+AllowedIPs = 0.0.0.0/0  # Routes all traffic through Provider
+
+Days 3-4: Solving the NAT Problem (Crucial)
+The hardest part of P2P VPNs is that the Provider is likely behind a home router (NAT)
+. WireGuard is "silent" and stateless, which is great for security but bad for NAT traversal
+.
+Your 1-Week Solution: Since you cannot build complex hole-punching (STUN/ICE) in one week
+, you must enforce a requirement for the Provider:
+• Requirement: The Provider must perform "Port Forwarding" on their home router (e.g., forward UDP port 51820 to their PC).
+• Why: This makes the Provider a "Public Peer" reachable by the Client.
+The "Keep-Alive" Fix: To ensure the connection stays open through the Client's router, you must inject the PersistentKeepalive setting into the WireGuard config you generate.
+• Set PersistentKeepalive = 25.
+• Why: NAT mappings expire quickly (often 2 minutes or less)
+. Sending a "dummy" packet every 25 seconds forces the router to keep the tunnel open,
+.
+Day 5: The "Escrow" & Verification Script
+Based on your source describing the "Users for Users" model, you need to verify the service works before releasing payment
+.
+The Verification Script (Python/Bash): You cannot trust the Provider to say "it's working." You need a script that the Client runs.
+1. Handshake Check: The script runs wg show on the Client machine.
+2. Verification: If the "latest handshake" timer is less than 3 minutes ago, the tunnel is active.
+3. Report: The script sends a simple API request to your website: POST /api/verify_connection { status: "active" }.
+4. Payment: Your backend releases the funds from escrow
+.
+Day 6: Frontend Dashboard
+Build a simple UI with two views:
+1. Provider View: "Start Earning." Displays their Public Key and IP. Input field to set their price.
+2. Client View: "Find VPN." List of available IPs (masked as locations, e.g., "Mumbai Node"). Click "Connect" to download the wg0.conf file.
+Day 7: Testing & Documentation
+• Test: Connect a Client to a Provider using the generated configs. Check if the Client's IP address changes to the Provider's IP (use curl ifconfig.me).
+• Disclaimer: You must add a disclaimer about Traffic Blame. In a decentralized VPN, if a Client commits a crime, the Provider's IP address is on the log
+.
+Why WireGuard is better than OpenVPN for this Deadline
+1. Statelessness: WireGuard handles roaming better. If the Client switches from WiFi to 4G, the handshake updates automatically
+.
+2. Configuration: OpenVPN requires generating a Certificate Authority (CA), Server Cert, and Client Cert. WireGuard only requires two strings: a Public Key and a Private Key
+. This saves you days of coding a PKI (Public Key Infrastructure) system.
+3. Performance: WireGuard is faster and has less overhead, making it better for "budget" hardware like the Raspberry Pis mentioned in your project overview
+,.
