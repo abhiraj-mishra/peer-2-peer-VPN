@@ -1,9 +1,12 @@
 {
+  "_id": {
+    "$oid": "6978e30906a28f65db4a845f"
+  },
   "username": "client_alice",
   "email": "alice@example.com",
-  "wallet_balance": 15.50,
+  "wallet_balance": 15.5,
   "device_config": {
     "public_key": "ClNt9+z3... (Client generates this locally)"
   },
-  "active_subscription": false
+  "active_tunnel_id": null
 }

@@ -1,17 +1,12 @@
-{,
-  "username": "provider_dave",
-  "wallet_address": "0x123abc...",
-  "status": "online",
-  "location": "India, Mumbai",
-  "network_config": {
-    "public_ip": "203.0.113.45",
-    "public_key": "PvKa8+e9x7... (The Key from 'wg genkey')",
-    "listen_port": 51820,
-    "bandwidth_limit_gb": 100
+{
+  "_id": {
+    "$oid": "6978e30906a28f65db4a845f"
   },
-  "pricing": {
-    "cost_per_hour": 5.00,
-    "currency": "USD"
+  "username": "client_alice",
+  "email": "alice@example.com",
+  "wallet_balance": 15.5,
+  "device_config": {
+    "public_key": "ClNt9+z3... (Client generates this locally)"
   },
-  "last_seen": "2023-10-25T10:00:00Z"
+  "active_tunnel_id": null
 }
