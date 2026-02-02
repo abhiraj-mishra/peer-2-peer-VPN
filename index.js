@@ -2,16 +2,20 @@ require("dotenv").config();
 
 const express = require("express");
 const { MongoClient, ObjectId } = require("mongodb");
+const cors = require("cors");
+
+// Import routes
+const createAuthRoutes = require("./routes/authRoutes");
+const createProviderRoutes = require("./routes/providerRoutes");
+const createClientRoutes = require("./routes/clientRoutes");
 
 const app = express();
 app.use(express.json());
+app.use(cors());
+app.use(express.urlencoded({ extended: true }));
 
 const PORT = 3000;
-
-// const MONGO_URI = "mongodb+srv://peer2peer_vpn_db_user:DDDzK4DxXQwHqpNh@peer2peer-vpn.rrupom4.mongodb.net/store?retryWrites=true&w=majority";
 const MONGO_URI = process.env.MONGO_URI;
-
-
 const client = new MongoClient(MONGO_URI);
 
 let db;
@@ -20,11 +24,16 @@ async function connectDB() {
   await client.connect();
   db = client.db("store");
   console.log("MongoDB connected");
+
+  // Setup routes after db is connected
+  app.use("/auth", createAuthRoutes(db));
+  app.use("/api/provider", createProviderRoutes(db));
+  app.use("/api/client", createClientRoutes(db));
 }
 
 connectDB();
 
-
+// Tunnel config route
 app.get("/tunnel/:id/config", async (req, res) => {
   try {
     const tunnelId = req.params.id;
@@ -76,4 +85,3 @@ PersistentKeepalive = ${tunnel.wireguard_settings.persistent_keepalive}
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
