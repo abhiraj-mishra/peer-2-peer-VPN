@@ -1,4 +1,5 @@
 import { useState, useContext, useEffect } from 'react';
+import axios from 'axios';
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 
@@ -9,6 +10,7 @@ const ProviderDashboard = () => {
     public_ip: '',
     listen_port: '51820',
     public_key: '',
+    price_per_gb: '',
   });
 
   const [providerInfo, setProviderInfo] = useState(null);
@@ -25,11 +27,23 @@ const ProviderDashboard = () => {
         console.log('Provider details response:', response.data);
         setProviderInfo(response.data);
         setFetchError(null);
-      
+
+        let fetchedIp = response.data.public_ip || '';
+
+        if (!fetchedIp) {
+          try {
+            const ipRes = await axios.get('https://api.ipify.org?format=json');
+            fetchedIp = ipRes.data.ip;
+          } catch (err) {
+            console.error('Failed to auto-fetch IP:', err);
+          }
+        }
+
         setConfig({
-          public_ip: response.data.public_ip || '',
+          public_ip: fetchedIp,
           listen_port: response.data.listen_port || '51820',
           public_key: response.data.public_key || '',
+          price_per_gb: response.data.price_per_gb || '',
         });
       } catch (err) {
         console.error('Failed to fetch provider details:', err);
@@ -55,7 +69,7 @@ const ProviderDashboard = () => {
     try {
       await api.post('/api/provider/update', config);
       setStatus('success');
- 
+
       setProviderInfo({ ...providerInfo, ...config });
     } catch (err) {
       setStatus('error');
@@ -110,6 +124,12 @@ const ProviderDashboard = () => {
                 {providerInfo.public_key || 'Not configured'}
               </p>
             </div>
+            <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Price per GB</p>
+              <p className="mt-1 text-sm font-mono text-slate-900">
+                {providerInfo.price_per_gb ? `$${providerInfo.price_per_gb}` : 'Not configured'}
+              </p>
+            </div>
           </div>
           {providerInfo.created_at && (
             <p className="mt-4 text-xs text-slate-500">
@@ -144,14 +164,28 @@ const ProviderDashboard = () => {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-slate-700">
-              Public IP address
+              Public IP address (Auto-detected)
             </label>
             <input
               type="text"
               name="public_ip"
               value={config.public_ip}
+              readOnly
+              className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 focus:outline-none cursor-not-allowed"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700">
+              Price per GB ($)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              name="price_per_gb"
+              value={config.price_per_gb}
               onChange={handleChange}
-              placeholder="203.0.113.42"
+              placeholder="0.00"
               className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all"
             />
           </div>

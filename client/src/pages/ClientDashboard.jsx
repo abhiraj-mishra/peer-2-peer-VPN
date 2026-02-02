@@ -7,6 +7,8 @@ const ClientDashboard = () => {
 
   const [config, setConfig] = useState({
     full_name: '',
+    username: '',
+    public_key: '',
   });
 
   const [clientInfo, setClientInfo] = useState(null);
@@ -20,6 +22,8 @@ const ClientDashboard = () => {
         setClientInfo(response.data);
         setConfig({
           full_name: response.data.full_name || '',
+          username: response.data.username || '',
+          public_key: response.data.device_config?.public_key || '',
         });
       } catch (err) {
         console.error('Failed to fetch client details:', err);
@@ -38,10 +42,22 @@ const ClientDashboard = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/api/client/update', config);
+      const payload = {
+        full_name: config.full_name,
+        username: config.username,
+        device_config: {
+          public_key: config.public_key
+        }
+      };
+      await api.post('/api/client/update', payload);
       setStatus('success');
       // Update displayed info
-      setClientInfo({ ...clientInfo, ...config });
+      setClientInfo({
+        ...clientInfo,
+        full_name: config.full_name,
+        username: config.username,
+        device_config: { ...clientInfo.device_config, public_key: config.public_key }
+      });
     } catch (err) {
       setStatus('error');
       console.error(err);
@@ -80,12 +96,38 @@ const ClientDashboard = () => {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Username</p>
+              <p className="mt-1 text-sm font-medium text-slate-900">{clientInfo.username || 'Not set'}</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Email</p>
               <p className="mt-1 text-sm font-medium text-slate-900">{clientInfo.email || 'Not set'}</p>
             </div>
             <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Wallet Balance</p>
+              <p className="mt-1 text-sm font-mono text-slate-900 font-bold text-emerald-600">
+                {clientInfo.wallet_balance !== undefined ? `$${clientInfo.wallet_balance.toFixed(2)}` : '$0.00'}
+              </p>
+            </div>
+            <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Public Key</p>
+              <p className="mt-1 text-sm font-mono text-slate-900 truncate" title={clientInfo.device_config?.public_key}>
+                {clientInfo.device_config?.public_key || 'Not configured'}
+              </p>
+            </div>
+            <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Display Name</p>
               <p className="mt-1 text-sm font-medium text-slate-900">{clientInfo.full_name || 'Not set'}</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Active Tunnel</p>
+              <p className="mt-1 text-sm font-medium text-slate-900">
+                {clientInfo.active_tunnel_id ? (
+                  <span className="text-emerald-600">Connected ({clientInfo.active_tunnel_id})</span>
+                ) : (
+                  <span className="text-slate-400">No active tunnel</span>
+                )}
+              </p>
             </div>
           </div>
           {clientInfo.created_at && (
@@ -119,6 +161,20 @@ const ClientDashboard = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700">
+              Username
+            </label>
+            <input
+              type="text"
+              name="username"
+              value={config.username}
+              onChange={handleChange}
+              placeholder="client_alice"
+              className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700">
               Display name
             </label>
             <input
@@ -126,8 +182,22 @@ const ClientDashboard = () => {
               name="full_name"
               value={config.full_name}
               onChange={handleChange}
-              placeholder="Your name"
+              placeholder="Alice"
               className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700">
+              WireGuard Public Key
+            </label>
+            <input
+              type="text"
+              name="public_key"
+              value={config.public_key}
+              onChange={handleChange}
+              placeholder="Base64 encoded public key"
+              className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all font-mono"
             />
           </div>
 
