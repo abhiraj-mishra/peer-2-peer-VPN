@@ -3,6 +3,17 @@ import axios from 'axios';
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 
+const Spinner = () => (
+  <span style={{
+    width: 14, height: 14,
+    border: '2px solid rgba(255,255,255,0.3)',
+    borderTopColor: '#fff',
+    borderRadius: '50%',
+    display: 'inline-block',
+    animation: 'spin 0.7s linear infinite',
+  }} />
+);
+
 const ProviderDashboard = () => {
   const { user } = useContext(AuthContext);
 
@@ -17,6 +28,7 @@ const ProviderDashboard = () => {
   const [providerInfo, setProviderInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
+  const [saveLoading, setSaveLoading] = useState(false);
   const [listingLoading, setListingLoading] = useState(false);
 
   useEffect(() => {
@@ -50,6 +62,7 @@ const ProviderDashboard = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSaveLoading(true);
     setStatus('');
     try {
       await api.post('/api/provider/update', config);
@@ -57,6 +70,8 @@ const ProviderDashboard = () => {
       setProviderInfo({ ...providerInfo, ...config });
     } catch {
       setStatus('error');
+    } finally {
+      setSaveLoading(false);
     }
   };
 
@@ -67,8 +82,6 @@ const ProviderDashboard = () => {
       setProviderInfo({ ...providerInfo, is_listed: res.data.is_listed });
     } catch (err) {
       const msg = err.response?.data?.error || err.response?.data || 'Failed to toggle listing.';
-      setStatus('listing_error');
-      // store temporarily in status for display
       setStatus(msg);
     } finally {
       setListingLoading(false);
@@ -78,7 +91,7 @@ const ProviderDashboard = () => {
   if (loading) return (
     <div className="page-wrap">
       {[1, 2].map(i => (
-        <div key={i} style={{ height: 80, borderRadius: 10, marginBottom: 16 }} className="skeleton" />
+        <div key={i} style={{ height: 80, borderRadius: 12, marginBottom: 16 }} className="skeleton" />
       ))}
     </div>
   );
@@ -88,73 +101,70 @@ const ProviderDashboard = () => {
   return (
     <div className="page-wrap">
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: 4 }}>Provider Dashboard</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-          {providerInfo?.email} &nbsp;·&nbsp; Configure and list your WireGuard node.
-        </p>
+      <div style={{
+        marginBottom: 24,
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: 16, padding: '20px 24px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexWrap: 'wrap', gap: 12,
+      }}>
+        <div>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: 4, letterSpacing: '-0.02em' }}>
+            ⚡ Provider Dashboard
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            {providerInfo?.email} · Manage your WireGuard node
+          </p>
+        </div>
+        <span className={`badge ${isListed ? 'badge-green' : 'badge-gray'}`} style={{ fontSize: '0.8rem', padding: '5px 14px' }}>
+          {isListed ? <><span className="dot" /> Live on Marketplace</> : '⬤ Not Listed'}
+        </span>
       </div>
 
       {/* Listing Toggle */}
-      <div className="toggle-row" style={{ marginBottom: 20 }}>
+      <div className="toggle-row" style={{ marginBottom: 24 }}>
         <div className="toggle-info">
           <h3>Marketplace Listing</h3>
-          <p>
-            {isListed
-              ? 'Your node is visible to clients.'
-              : 'Enable to appear in the marketplace.'}
-          </p>
+          <p>{isListed ? 'Your node is visible to clients.' : 'Enable to appear in the marketplace.'}</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span
-            className={`badge ${isListed ? 'badge-green' : 'badge-gray'}`}
-          >
-            {isListed ? <><span className="dot" />Listed</> : 'Unlisted'}
-          </span>
-          <button
-            className={`btn btn-sm ${isListed ? 'btn-danger' : 'btn-success'}`}
-            onClick={handleToggleListing}
-            disabled={listingLoading}
-          >
-            {listingLoading ? '…' : isListed ? 'Unlist' : 'List Node'}
-          </button>
-        </div>
+        <button
+          className={`btn ${isListed ? 'btn-danger' : 'btn-success'}`}
+          style={{ minWidth: 120 }}
+          onClick={handleToggleListing}
+          disabled={listingLoading}
+        >
+          {listingLoading
+            ? <><Spinner /> Loading…</>
+            : isListed ? '🔴 Unlist Node' : '🟢 List Node'}
+        </button>
       </div>
 
-      {/* Status messages */}
-      {status === 'success' && (
-        <div className="alert alert-success">Configuration saved.</div>
-      )}
-      {status === 'error' && (
-        <div className="alert alert-error">Failed to save configuration.</div>
-      )}
-      {typeof status === 'string' && status.length > 10 && (
+      {/* Status Messages */}
+      {status === 'success' && <div className="alert alert-success">✓ Configuration saved successfully.</div>}
+      {status === 'error' && <div className="alert alert-error">✕ Failed to save configuration.</div>}
+      {typeof status === 'string' && status.length > 10 && status !== 'success' && status !== 'error' && (
         <div className="alert alert-error">{status}</div>
       )}
 
       {/* Current Config Summary */}
       {providerInfo && (providerInfo.public_ip || providerInfo.public_key) && (
         <div className="card" style={{ marginBottom: 20 }}>
-          <p className="section-title">Current Node</p>
+          <p className="section-title">Current Node Config</p>
           <div className="info-grid">
-            <div className="info-item">
-              <div className="info-label">Public IP</div>
-              <div className="info-value mono">{providerInfo.public_ip || '—'}</div>
-            </div>
-            <div className="info-item">
-              <div className="info-label">Port</div>
-              <div className="info-value mono">{providerInfo.listen_port || '—'}</div>
-            </div>
-            <div className="info-item">
-              <div className="info-label">Price / GB</div>
-              <div className="info-value" style={{ color: 'var(--success)' }}>
-                {providerInfo.price_per_gb ? `$${providerInfo.price_per_gb}` : '—'}
+            {[
+              { label: 'Public IP', value: providerInfo.public_ip || '—', mono: true },
+              { label: 'Port', value: providerInfo.listen_port || '—', mono: true },
+              { label: 'Price / GB', value: providerInfo.price_per_gb ? `$${providerInfo.price_per_gb}` : '—', color: 'var(--success)' },
+              { label: 'Location', value: providerInfo.location || '—' },
+            ].map((item, i) => (
+              <div key={i} className="info-item">
+                <div className="info-label">{item.label}</div>
+                <div className="info-value mono" style={item.color ? { color: item.color, fontWeight: 700 } : {}}>
+                  {item.value}
+                </div>
               </div>
-            </div>
-            <div className="info-item">
-              <div className="info-label">Location</div>
-              <div className="info-value">{providerInfo.location || '—'}</div>
-            </div>
+            ))}
           </div>
         </div>
       )}
@@ -164,7 +174,7 @@ const ProviderDashboard = () => {
         <p className="section-title">Update Configuration</p>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Public IP (auto-detected)</label>
+            <label>Public IP <span style={{ color: 'var(--text-dim)', textTransform: 'none', letterSpacing: 0 }}>(auto-detected)</span></label>
             <input type="text" value={config.public_ip} readOnly />
           </div>
 
@@ -193,7 +203,7 @@ const ProviderDashboard = () => {
           </div>
 
           <div className="form-group">
-            <label>Location (optional)</label>
+            <label>Location <span style={{ color: 'var(--text-dim)', textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
             <input
               type="text"
               name="location"
@@ -215,11 +225,13 @@ const ProviderDashboard = () => {
             />
           </div>
 
-          <button type="submit" className="btn btn-primary btn-sm">
-            Save configuration
+          <button type="submit" className="btn btn-primary btn-sm" disabled={saveLoading}>
+            {saveLoading ? <><Spinner /> Saving…</> : 'Save configuration'}
           </button>
         </form>
       </div>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };
