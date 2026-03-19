@@ -2,226 +2,390 @@ import { useState, useContext, useEffect } from 'react';
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 
-const ClientDashboard = () => {
-  const { user } = useContext(AuthContext);
+// ─── Purchase / Connect Modal ────────────────────────────────────────────────
+const PurchaseModal = ({ provider, onClose, onSuccess }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const [config, setConfig] = useState({
-    full_name: '',
-    username: '',
-    public_key: '',
-  });
+  const handlePurchase = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await api.post('/api/client/purchase', { provider_id: provider._id });
+      onSuccess(res.data);
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data || 'Purchase failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const [clientInfo, setClientInfo] = useState(null);
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <span className="modal-title">Connect to Provider</span>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <div className="modal-detail-row">
+            <span className="label">IP Address</span>
+            <span className="value mono">{provider.public_ip_masked}</span>
+          </div>
+          <div className="modal-detail-row">
+            <span className="label">Port</span>
+            <span className="value">{provider.listen_port || '51820'}</span>
+          </div>
+          <div className="modal-detail-row">
+            <span className="label">Location</span>
+            <span className="value">{provider.location || 'N/A'}</span>
+          </div>
+          <div className="modal-detail-row">
+            <span className="label">Price per GB</span>
+            <span className="value" style={{ color: 'var(--success)' }}>
+              ${Number(provider.price_per_gb || 0).toFixed(2)} / GB
+            </span>
+          </div>
+        </div>
+
+        {error && <div className="alert alert-error">{error}</div>}
+
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 20 }}>
+          This will create an active WireGuard tunnel to this provider. A config file will be generated for you.
+        </p>
+
+        <div className="modal-actions">
+          <button className="btn btn-outline" style={{ flex: 1 }} onClick={onClose}>
+            Cancel
+          </button>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={handlePurchase} disabled={loading}>
+            {loading ? 'Connecting…' : 'Connect'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Success Modal (show config download) ────────────────────────────────────
+const SuccessModal = ({ tunnelData, onClose }) => (
+  <div className="modal-overlay" onClick={onClose}>
+    <div className="modal" onClick={e => e.stopPropagation()}>
+      <div className="modal-header">
+        <span className="modal-title">🎉 Connected!</span>
+        <button className="modal-close" onClick={onClose}>×</button>
+      </div>
+
+      <div className="alert alert-success" style={{ marginBottom: 20 }}>
+        Tunnel created successfully. Download your WireGuard config below.
+      </div>
+
+      <div className="modal-detail-row">
+        <span className="label">Tunnel ID</span>
+        <span className="value mono" style={{ fontSize: '0.75rem' }}>{tunnelData.tunnelId}</span>
+      </div>
+      <div className="modal-detail-row">
+        <span className="label">Provider IP</span>
+        <span className="value mono">{tunnelData.provider?.public_ip}</span>
+      </div>
+      <div className="modal-detail-row">
+        <span className="label">Port</span>
+        <span className="value">{tunnelData.provider?.listen_port}</span>
+      </div>
+
+      <div className="modal-actions" style={{ marginTop: 20 }}>
+        <a
+          href={`http://localhost:3000/tunnel/${tunnelData.tunnelId}/config`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-primary"
+          style={{ flex: 1, textDecoration: 'none', textAlign: 'center' }}
+        >
+          ⬇ Download .conf
+        </a>
+        <button className="btn btn-outline" style={{ flex: 1 }} onClick={onClose}>Done</button>
+      </div>
+    </div>
+  </div>
+);
+
+// ─── Marketplace Tab ─────────────────────────────────────────────────────────
+const MarketplaceTab = ({ activeTunnelId }) => {
+  const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState('');
+  const [selectedProvider, setSelectedProvider] = useState(null);
+  const [tunnelResult, setTunnelResult] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const fetchClientDetails = async () => {
+    (async () => {
       try {
-        const response = await api.get('/api/client/details');
-        setClientInfo(response.data);
-        setConfig({
-          full_name: response.data.full_name || '',
-          username: response.data.username || '',
-          public_key: response.data.device_config?.public_key || '',
-        });
+        const res = await api.get('/api/client/marketplace');
+        setProviders(res.data);
       } catch (err) {
-        console.error('Failed to fetch client details:', err);
+        setError('Failed to load marketplace.');
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchClientDetails();
+    })();
   }, []);
 
-  const handleChange = (e) => {
-    setConfig({ ...config, [e.target.name]: e.target.value });
-  };
+  if (loading) return (
+    <div>
+      {[1,2,3].map(i => (
+        <div key={i} style={{ height: 120, borderRadius: 12, marginBottom: 12 }} className="skeleton" />
+      ))}
+    </div>
+  );
+
+  if (error) return <div className="alert alert-error">{error}</div>;
+
+  if (providers.length === 0) return (
+    <div className="empty-state">
+      <p style={{ fontSize: '2rem', marginBottom: 8 }}>🌐</p>
+      <p>No providers listed yet.</p>
+      <p style={{ marginTop: 4, fontSize: '0.8rem' }}>Providers can list their nodes from their dashboard.</p>
+    </div>
+  );
+
+  return (
+    <>
+      {activeTunnelId && (
+        <div className="alert alert-info" style={{ marginBottom: 16 }}>
+          You have an active tunnel. Purchasing will replace it.
+        </div>
+      )}
+
+      <div className="provider-grid">
+        {providers.map(p => (
+          <div key={p._id} className="provider-card">
+            <div className="provider-card-header">
+              <div>
+                <div className="provider-ip">{p.public_ip_masked}</div>
+                {p.location && (
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 3 }}>
+                    📍 {p.location}
+                  </div>
+                )}
+              </div>
+              <span className="badge badge-green"><span className="dot" />Live</span>
+            </div>
+
+            <div className="provider-meta">
+              <div className="meta-item">
+                <label>Port</label>
+                <p className="mono">{p.listen_port || '51820'}</p>
+              </div>
+              <div className="meta-item">
+                <label>Price / GB</label>
+                <p style={{ color: 'var(--success)' }}>${Number(p.price_per_gb || 0).toFixed(2)}</p>
+              </div>
+            </div>
+
+            <button
+              className="btn btn-primary btn-full btn-sm"
+              onClick={() => setSelectedProvider(p)}
+            >
+              Connect →
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {selectedProvider && !tunnelResult && (
+        <PurchaseModal
+          provider={selectedProvider}
+          onClose={() => setSelectedProvider(null)}
+          onSuccess={(data) => { setTunnelResult(data); setSelectedProvider(null); }}
+        />
+      )}
+
+      {tunnelResult && (
+        <SuccessModal
+          tunnelData={tunnelResult}
+          onClose={() => setTunnelResult(null)}
+        />
+      )}
+    </>
+  );
+};
+
+// ─── Profile Tab ─────────────────────────────────────────────────────────────
+const ProfileTab = ({ clientInfo, onUpdated }) => {
+  const [config, setConfig] = useState({
+    full_name: clientInfo.full_name || '',
+    username: clientInfo.username || '',
+    public_key: clientInfo.device_config?.public_key || '',
+  });
+  const [status, setStatus] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const payload = {
+      await api.post('/api/client/update', {
         full_name: config.full_name,
         username: config.username,
-        device_config: {
-          public_key: config.public_key
-        }
-      };
-      await api.post('/api/client/update', payload);
-      setStatus('success');
-      // Update displayed info
-      setClientInfo({
-        ...clientInfo,
-        full_name: config.full_name,
-        username: config.username,
-        device_config: { ...clientInfo.device_config, public_key: config.public_key }
+        device_config: { public_key: config.public_key }
       });
-    } catch (err) {
+      setStatus('success');
+      onUpdated({ ...clientInfo, ...config });
+    } catch {
       setStatus('error');
-      console.error(err);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-slate-200 rounded w-1/3 mb-4"></div>
-          <div className="h-4 bg-slate-200 rounded w-1/2 mb-8"></div>
-          <div className="h-64 bg-slate-200 rounded"></div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8 text-slate-900">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          Client Dashboard
-        </h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Manage your profile and access available VPN tunnels.
-        </p>
-      </div>
-
-      {/* Current Details Card */}
-      {clientInfo && (
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm mb-6">
-          <h2 className="mb-4 text-base font-semibold text-slate-900">
-            Your Profile
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Username</p>
-              <p className="mt-1 text-sm font-medium text-slate-900">{clientInfo.username || 'Not set'}</p>
-            </div>
-            <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Email</p>
-              <p className="mt-1 text-sm font-medium text-slate-900">{clientInfo.email || 'Not set'}</p>
-            </div>
-            <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Wallet Balance</p>
-              <p className="mt-1 text-sm font-mono text-slate-900 font-bold text-emerald-600">
-                {clientInfo.wallet_balance !== undefined ? `$${clientInfo.wallet_balance.toFixed(2)}` : '$0.00'}
-              </p>
-            </div>
-            <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Public Key</p>
-              <p className="mt-1 text-sm font-mono text-slate-900 truncate" title={clientInfo.device_config?.public_key}>
-                {clientInfo.device_config?.public_key || 'Not configured'}
-              </p>
-            </div>
-            <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Display Name</p>
-              <p className="mt-1 text-sm font-medium text-slate-900">{clientInfo.full_name || 'Not set'}</p>
-            </div>
-            <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Active Tunnel</p>
-              <p className="mt-1 text-sm font-medium text-slate-900">
-                {clientInfo.active_tunnel_id ? (
-                  <span className="text-emerald-600">Connected ({clientInfo.active_tunnel_id})</span>
-                ) : (
-                  <span className="text-slate-400">No active tunnel</span>
-                )}
-              </p>
-            </div>
-          </div>
-          {clientInfo.created_at && (
-            <p className="mt-4 text-xs text-slate-500">
-              Member since: {new Date(clientInfo.created_at).toLocaleDateString()}
-            </p>
-          )}
+    <form onSubmit={handleSubmit}>
+      {status && (
+        <div className={`alert ${status === 'success' ? 'alert-success' : 'alert-error'}`}>
+          {status === 'success' ? 'Profile updated.' : 'Failed to update profile.'}
         </div>
       )}
+      <div className="form-row" style={{ marginBottom: 16 }}>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label>Username</label>
+          <input value={config.username} onChange={e => setConfig({ ...config, username: e.target.value })}
+            placeholder="alice" />
+        </div>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label>Display Name</label>
+          <input value={config.full_name} onChange={e => setConfig({ ...config, full_name: e.target.value })}
+            placeholder="Alice" />
+        </div>
+      </div>
+      <div className="form-group">
+        <label>WireGuard Public Key</label>
+        <input value={config.public_key} onChange={e => setConfig({ ...config, public_key: e.target.value })}
+          placeholder="Base64-encoded key" className="mono" />
+      </div>
+      <button type="submit" className="btn btn-primary btn-sm">Save changes</button>
+    </form>
+  );
+};
 
-      {/* Profile Card */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-base font-semibold text-slate-900 mb-4">
-          Update Profile
-        </h2>
+// ─── Connection Tab ───────────────────────────────────────────────────────────
+const ConnectionTab = ({ clientInfo, onDisconnect }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-        {status && (
-          <div
-            className={`mb-6 rounded-md border px-3 py-2 text-sm
-              ${status === 'success'
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                : 'border-rose-200 bg-rose-50 text-rose-700'
-              }`}
-          >
-            {status === 'success'
-              ? 'Profile updated successfully.'
-              : 'Failed to update profile.'}
+  const handleDisconnect = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      await api.post('/api/client/disconnect');
+      onDisconnect();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Disconnect failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const tunnelId = clientInfo.active_tunnel_id;
+
+  return (
+    <div>
+      {tunnelId ? (
+        <div>
+          <div className="alert alert-success" style={{ marginBottom: 20 }}>
+            <strong>Active tunnel:</strong> {String(tunnelId)}
           </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700">
-              Username
-            </label>
-            <input
-              type="text"
-              name="username"
-              value={config.username}
-              onChange={handleChange}
-              placeholder="client_alice"
-              className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all"
-            />
+          <div style={{ display: 'flex', gap: 10 }}>
+            <a
+              href={`http://localhost:3000/tunnel/${tunnelId}/config`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-outline btn-sm"
+              style={{ textDecoration: 'none' }}
+            >
+              ⬇ Download Config
+            </a>
+            <button className="btn btn-danger btn-sm" onClick={handleDisconnect} disabled={loading}>
+              {loading ? 'Disconnecting…' : 'Disconnect'}
+            </button>
           </div>
+          {error && <div className="alert alert-error" style={{ marginTop: 12 }}>{error}</div>}
+        </div>
+      ) : (
+        <div className="empty-state">
+          <p style={{ fontSize: '2rem', marginBottom: 8 }}>🔌</p>
+          <p>No active tunnel.</p>
+          <p style={{ marginTop: 4, fontSize: '0.8rem' }}>Go to the Marketplace tab to connect to a provider.</p>
+        </div>
+      )}
+    </div>
+  );
+};
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700">
-              Display name
-            </label>
-            <input
-              type="text"
-              name="full_name"
-              value={config.full_name}
-              onChange={handleChange}
-              placeholder="Alice"
-              className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all"
-            />
-          </div>
+// ─── Main Dashboard ───────────────────────────────────────────────────────────
+const ClientDashboard = () => {
+  const { user } = useContext(AuthContext);
+  const [tab, setTab] = useState('marketplace');
+  const [clientInfo, setClientInfo] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700">
-              WireGuard Public Key
-            </label>
-            <input
-              type="text"
-              name="public_key"
-              value={config.public_key}
-              onChange={handleChange}
-              placeholder="Base64 encoded public key"
-              className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all font-mono"
-            />
-          </div>
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.get('/api/client/details');
+        setClientInfo(res.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
-          <button
-            type="submit"
-            className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all"
-          >
-            Save changes
-          </button>
-        </form>
+  if (loading) return (
+    <div className="page-wrap">
+      {[1,2].map(i => (
+        <div key={i} style={{ height: 80, borderRadius: 10, marginBottom: 16 }} className="skeleton" />
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="page-wrap">
+      {/* Header */}
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: 4 }}>Client Dashboard</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+          {clientInfo?.email} &nbsp;·&nbsp;
+          <span style={{ color: 'var(--success)' }}>
+            ${Number(clientInfo?.wallet_balance || 0).toFixed(2)} balance
+          </span>
+        </p>
       </div>
 
-      {/* Tunnels Section */}
-      <div className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-base font-semibold text-slate-900">
-          Available Tunnels
-        </h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Browse and connect to available VPN providers.
-        </p>
+      {/* Tabs */}
+      <div className="tabs">
+        {[
+          { id: 'marketplace', label: '🌐 Marketplace' },
+          { id: 'connection',  label: '🔌 Connection' },
+          { id: 'profile',     label: '👤 Profile' },
+        ].map(t => (
+          <button key={t.id} className={`tab ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-        <div className="mt-6 rounded-lg bg-slate-50 border border-slate-100 p-8 text-center">
-          <p className="text-sm text-slate-500 italic">Tunnel discovery coming soon.</p>
-        </div>
+      {/* Tab Content */}
+      <div className="card">
+        {tab === 'marketplace' && (
+          <MarketplaceTab activeTunnelId={clientInfo?.active_tunnel_id} />
+        )}
+        {tab === 'connection' && (
+          <ConnectionTab
+            clientInfo={clientInfo}
+            onDisconnect={() => setClientInfo({ ...clientInfo, active_tunnel_id: null })}
+          />
+        )}
+        {tab === 'profile' && clientInfo && (
+          <ProfileTab clientInfo={clientInfo} onUpdated={setClientInfo} />
+        )}
       </div>
     </div>
   );

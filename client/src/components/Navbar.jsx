@@ -1,5 +1,5 @@
-import { Link, useNavigate } from 'react-router-dom';
 import { useContext } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
 const Navbar = () => {
@@ -12,54 +12,46 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 w-full bg-white/90 backdrop-blur border-b border-slate-200 z-50">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex h-16 items-center justify-between">
+    <nav style={{
+      position: 'sticky', top: 0, zIndex: 50,
+      background: 'rgba(255,255,255,0.9)',
+      backdropFilter: 'blur(12px)',
+      borderBottom: '1px solid var(--border)',
+      padding: '0 24px',
+    }}>
+      <div style={{
+        maxWidth: 900, margin: '0 auto',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        height: 56
+      }}>
+        {/* Brand */}
+        <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="var(--accent)" strokeWidth="1.5"/>
+            <circle cx="12" cy="12" r="3" fill="var(--accent)"/>
+            <path d="M12 6v3M12 15v3M6 12h3M15 12h3" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text)', letterSpacing: '-0.01em' }}>
+            P2P<span style={{ color: 'var(--accent)' }}>VPN</span>
+          </span>
+        </Link>
 
-          {/* Brand */}
-          <Link
-            to="/"
-            className="text-lg font-bold tracking-tight text-slate-900"
-          >
-            P2P VPN
-          </Link>
-
-          {/* Actions */}
-          <div className="hidden md:flex items-center gap-6 text-sm font-medium">
-            {!user ? (
-              <>
-                <Link
-                  to="/login"
-                  className="text-slate-600 hover:text-slate-900 transition-colors"
-                >
-                  Login
-                </Link>
-
-                <Link
-                  to="/signup"
-                  className="rounded-full bg-slate-900 px-5 py-2 text-white hover:bg-slate-800 transition-all shadow-sm hover:shadow-md"
-                >
-                  Sign up
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/dashboard"
-                  className="text-slate-600 hover:text-slate-900 transition-colors"
-                >
-                  Dashboard
-                </Link>
-
-                <button
-                  onClick={handleLogout}
-                  className="text-slate-600 hover:text-slate-900 transition-colors"
-                >
-                  Logout
-                </button>
-              </>
-            )}
-          </div>
+        {/* Right */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {user ? (
+            <>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                {user.role === 'provider' ? 'Provider' : 'Client'}
+              </span>
+              <Link to="/dashboard" className="btn btn-outline btn-sm">Dashboard</Link>
+              <button className="btn btn-sm btn-danger" onClick={handleLogout}>Logout</button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="btn btn-outline btn-sm">Login</Link>
+              <Link to="/signup" className="btn btn-primary btn-sm">Sign up</Link>
+            </>
+          )}
         </div>
       </div>
     </nav>

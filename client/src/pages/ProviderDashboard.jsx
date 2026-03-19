@@ -11,217 +11,211 @@ const ProviderDashboard = () => {
     listen_port: '51820',
     public_key: '',
     price_per_gb: '',
+    location: '',
   });
 
   const [providerInfo, setProviderInfo] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(null);
   const [status, setStatus] = useState('');
-
+  const [listingLoading, setListingLoading] = useState(false);
 
   useEffect(() => {
-    const fetchProviderDetails = async () => {
+    (async () => {
       try {
-        console.log('Fetching provider details...');
-        const response = await api.get('/api/provider/details');
-        console.log('Provider details response:', response.data);
-        setProviderInfo(response.data);
-        setFetchError(null);
+        const res = await api.get('/api/provider/details');
+        setProviderInfo(res.data);
 
-        let fetchedIp = response.data.public_ip || '';
-
-        if (!fetchedIp) {
+        let ip = res.data.public_ip || '';
+        if (!ip) {
           try {
             const ipRes = await axios.get('https://api.ipify.org?format=json');
-            fetchedIp = ipRes.data.ip;
-          } catch (err) {
-            console.error('Failed to auto-fetch IP:', err);
-          }
+            ip = ipRes.data.ip;
+          } catch {}
         }
 
         setConfig({
-          public_ip: fetchedIp,
-          listen_port: response.data.listen_port || '51820',
-          public_key: response.data.public_key || '',
-          price_per_gb: response.data.price_per_gb || '',
+          public_ip: ip,
+          listen_port: res.data.listen_port || '51820',
+          public_key: res.data.public_key || '',
+          price_per_gb: res.data.price_per_gb || '',
+          location: res.data.location || '',
         });
       } catch (err) {
-        console.error('Failed to fetch provider details:', err);
-        setFetchError(err.response?.data || err.message || 'Failed to fetch details');
+        console.error(err);
       } finally {
         setLoading(false);
       }
-    };
-
-    if (user) {
-      fetchProviderDetails();
-    } else {
-      setLoading(false);
-    }
+    })();
   }, [user]);
-
-  const handleChange = (e) => {
-    setConfig({ ...config, [e.target.name]: e.target.value });
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setStatus('');
     try {
       await api.post('/api/provider/update', config);
       setStatus('success');
-
       setProviderInfo({ ...providerInfo, ...config });
-    } catch (err) {
+    } catch {
       setStatus('error');
-      console.error(err);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-slate-200 rounded w-1/3 mb-4"></div>
-          <div className="h-4 bg-slate-200 rounded w-1/2 mb-8"></div>
-          <div className="h-64 bg-slate-200 rounded"></div>
-        </div>
-      </div>
-    );
-  }
+  const handleToggleListing = async () => {
+    setListingLoading(true);
+    try {
+      const res = await api.post('/api/provider/listing/toggle');
+      setProviderInfo({ ...providerInfo, is_listed: res.data.is_listed });
+    } catch (err) {
+      const msg = err.response?.data?.error || err.response?.data || 'Failed to toggle listing.';
+      setStatus('listing_error');
+      // store temporarily in status for display
+      setStatus(msg);
+    } finally {
+      setListingLoading(false);
+    }
+  };
+
+  if (loading) return (
+    <div className="page-wrap">
+      {[1, 2].map(i => (
+        <div key={i} style={{ height: 80, borderRadius: 10, marginBottom: 16 }} className="skeleton" />
+      ))}
+    </div>
+  );
+
+  const isListed = providerInfo?.is_listed;
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8 text-slate-900">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          Provider Dashboard
-        </h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Configure your WireGuard node to accept client connections.
+    <div className="page-wrap">
+      {/* Header */}
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: 4 }}>Provider Dashboard</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+          {providerInfo?.email} &nbsp;·&nbsp; Configure and list your WireGuard node.
         </p>
       </div>
 
-      {providerInfo && (
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm mb-6">
-          <h2 className="mb-4 text-base font-semibold text-slate-900">
-            Current Configuration
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Email</p>
-              <p className="mt-1 text-sm font-medium text-slate-900">{providerInfo.email || 'Not set'}</p>
+      {/* Listing Toggle */}
+      <div className="toggle-row" style={{ marginBottom: 20 }}>
+        <div className="toggle-info">
+          <h3>Marketplace Listing</h3>
+          <p>
+            {isListed
+              ? 'Your node is visible to clients.'
+              : 'Enable to appear in the marketplace.'}
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span
+            className={`badge ${isListed ? 'badge-green' : 'badge-gray'}`}
+          >
+            {isListed ? <><span className="dot" />Listed</> : 'Unlisted'}
+          </span>
+          <button
+            className={`btn btn-sm ${isListed ? 'btn-danger' : 'btn-success'}`}
+            onClick={handleToggleListing}
+            disabled={listingLoading}
+          >
+            {listingLoading ? '…' : isListed ? 'Unlist' : 'List Node'}
+          </button>
+        </div>
+      </div>
+
+      {/* Status messages */}
+      {status === 'success' && (
+        <div className="alert alert-success">Configuration saved.</div>
+      )}
+      {status === 'error' && (
+        <div className="alert alert-error">Failed to save configuration.</div>
+      )}
+      {typeof status === 'string' && status.length > 10 && (
+        <div className="alert alert-error">{status}</div>
+      )}
+
+      {/* Current Config Summary */}
+      {providerInfo && (providerInfo.public_ip || providerInfo.public_key) && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <p className="section-title">Current Node</p>
+          <div className="info-grid">
+            <div className="info-item">
+              <div className="info-label">Public IP</div>
+              <div className="info-value mono">{providerInfo.public_ip || '—'}</div>
             </div>
-            <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Public IP</p>
-              <p className="mt-1 text-sm font-mono text-slate-900">{providerInfo.public_ip || 'Not configured'}</p>
+            <div className="info-item">
+              <div className="info-label">Port</div>
+              <div className="info-value mono">{providerInfo.listen_port || '—'}</div>
             </div>
-            <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Listen Port</p>
-              <p className="mt-1 text-sm font-mono text-slate-900">{providerInfo.listen_port || 'Not configured'}</p>
+            <div className="info-item">
+              <div className="info-label">Price / GB</div>
+              <div className="info-value" style={{ color: 'var(--success)' }}>
+                {providerInfo.price_per_gb ? `$${providerInfo.price_per_gb}` : '—'}
+              </div>
             </div>
-            <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Public Key</p>
-              <p className="mt-1 text-sm font-mono text-slate-900 truncate" title={providerInfo.public_key}>
-                {providerInfo.public_key || 'Not configured'}
-              </p>
-            </div>
-            <div className="rounded-lg bg-slate-50 border border-slate-100 p-4">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Price per GB</p>
-              <p className="mt-1 text-sm font-mono text-slate-900">
-                {providerInfo.price_per_gb ? `$${providerInfo.price_per_gb}` : 'Not configured'}
-              </p>
+            <div className="info-item">
+              <div className="info-label">Location</div>
+              <div className="info-value">{providerInfo.location || '—'}</div>
             </div>
           </div>
-          {providerInfo.created_at && (
-            <p className="mt-4 text-xs text-slate-500">
-              Member since: {new Date(providerInfo.created_at).toLocaleDateString()}
-            </p>
-          )}
         </div>
       )}
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="mb-1 text-base font-semibold text-slate-900">
-          Update Configuration
-        </h2>
-        <p className="mb-6 text-sm text-slate-600">
-          These values are used by clients to establish secure tunnels.
-        </p>
-
-        {status && (
-          <div
-            className={`mb-6 rounded-md border px-3 py-2 text-sm
-              ${status === 'success'
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                : 'border-rose-200 bg-rose-50 text-rose-700'
-              }`}
-          >
-            {status === 'success'
-              ? 'Configuration saved successfully.'
-              : 'Failed to save configuration.'}
+      {/* Update Form */}
+      <div className="card">
+        <p className="section-title">Update Configuration</p>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Public IP (auto-detected)</label>
+            <input type="text" value={config.public_ip} readOnly />
           </div>
-        )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-slate-700">
-              Public IP address (Auto-detected)
-            </label>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Listen Port</label>
+              <input
+                type="text"
+                name="listen_port"
+                value={config.listen_port}
+                onChange={e => setConfig({ ...config, listen_port: e.target.value })}
+                placeholder="51820"
+              />
+            </div>
+            <div className="form-group">
+              <label>Price per GB ($)</label>
+              <input
+                type="number"
+                step="0.01"
+                name="price_per_gb"
+                value={config.price_per_gb}
+                onChange={e => setConfig({ ...config, price_per_gb: e.target.value })}
+                placeholder="0.10"
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Location (optional)</label>
             <input
               type="text"
-              name="public_ip"
-              value={config.public_ip}
-              readOnly
-              className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 focus:outline-none cursor-not-allowed"
+              name="location"
+              value={config.location}
+              onChange={e => setConfig({ ...config, location: e.target.value })}
+              placeholder="e.g. US East, Frankfurt, Singapore"
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700">
-              Price per GB ($)
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              name="price_per_gb"
-              value={config.price_per_gb}
-              onChange={handleChange}
-              placeholder="0.00"
-              className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700">
-              Listen port
-            </label>
-            <input
-              type="text"
-              name="listen_port"
-              value={config.listen_port}
-              onChange={handleChange}
-              placeholder="51820"
-              className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700">
-              WireGuard public key
-            </label>
+          <div className="form-group">
+            <label>WireGuard Public Key</label>
             <input
               type="text"
               name="public_key"
               value={config.public_key}
-              onChange={handleChange}
+              onChange={e => setConfig({ ...config, public_key: e.target.value })}
               placeholder="Base64-encoded public key"
-              className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all font-mono"
+              className="mono"
             />
           </div>
 
-          <button
-            type="submit"
-            className="mt-2 inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all"
-          >
+          <button type="submit" className="btn btn-primary btn-sm">
             Save configuration
           </button>
         </form>

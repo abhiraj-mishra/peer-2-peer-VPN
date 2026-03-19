@@ -1,91 +1,65 @@
 import { Link } from 'react-router-dom';
 
-const Landing = () => {
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      {/* Hero */}
-      <div className="pt-32 pb-24 relative overflow-hidden">
-        {/* Background Decoration */}
-        <div className="absolute inset-0 -z-10 h-full w-full bg-white [background:radial-gradient(125%_125%_at_50%_10%,#fff_40%,#63e_100%)] opacity-5"></div>
+const Landing = () => (
+  <div style={{ minHeight: '100vh' }}>
+    {/* Hero */}
+    <div style={{
+      maxWidth: 720, margin: '0 auto', padding: '96px 24px 80px',
+      textAlign: 'center'
+    }}>
+      <span className="badge badge-indigo" style={{ marginBottom: 20 }}>
+        Beta · WireGuard Peer-to-Peer
+      </span>
 
-        <div className="mx-auto max-w-4xl px-6 text-center">
-          <span className="inline-block rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-800 mb-6 border border-slate-200">
-            Now in Beta
-          </span>
-          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-6xl mb-6">
-            Decentralized VPN <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-700 to-slate-900">for the modern web</span>
-          </h1>
+      <h1 style={{
+        fontSize: 'clamp(2rem, 5vw, 3.2rem)', fontWeight: 800,
+        lineHeight: 1.2, letterSpacing: '-0.03em', marginBottom: 20
+      }}>
+        Decentralized VPN<br />
+        <span style={{ color: 'var(--accent)' }}>marketplace</span>
+      </h1>
 
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600 leading-relaxed">
-            Marketplace built on WireGuard. Securely connect or earn by sharing your bandwidth.
-            No central servers, just pure peer-to-peer privacy.
-          </p>
+      <p style={{
+        color: 'var(--text-muted)', maxWidth: 480, margin: '0 auto 36px',
+        fontSize: '1.05rem', lineHeight: 1.7
+      }}>
+        Providers list their WireGuard nodes. Clients browse and connect.
+        No central servers. Pure peer-to-peer.
+      </p>
 
-          <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
-            <Link
-              to="/signup"
-              className="rounded-full bg-slate-900 px-8 py-3.5 text-sm font-semibold text-white shadow-lg hover:bg-slate-800 hover:-translate-y-0.5 transition-all"
-            >
-              Get Started
-            </Link>
-
-            <Link
-              to="/login"
-              className="rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-slate-700 border border-slate-200 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all"
-            >
-              Sign In
-            </Link>
-          </div>
-        </div>
+      <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <Link to="/signup" className="btn btn-primary" style={{ padding: '10px 28px', fontSize: '0.925rem' }}>
+          Get started
+        </Link>
+        <Link to="/login" className="btn btn-outline" style={{ padding: '10px 28px', fontSize: '0.925rem' }}>
+          Sign in
+        </Link>
       </div>
+    </div>
 
-      {/* Feature Grid */}
-      <div className="bg-white py-24 sm:py-32 border-t border-slate-100">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl lg:text-center">
-            <h2 className="text-base font-semibold leading-7 text-indigo-600">Faster & Safer</h2>
-            <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-              Everything you need to stay secure
-            </p>
-          </div>
-
-          <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
-            <div className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
-
-              <div className="flex flex-col rounded-2xl bg-slate-50 p-8 border border-slate-100 hover:shadow-md transition-shadow">
-                <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-slate-900">
-                  Decentralized
-                </dt>
-                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-slate-600">
-                  <p className="flex-auto">No central authority. Providers run independent nodes, giving you more choice and reliance.</p>
-                </dd>
-              </div>
-
-              <div className="flex flex-col rounded-2xl bg-slate-50 p-8 border border-slate-100 hover:shadow-md transition-shadow">
-                <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-slate-900">
-                  WireGuard-based
-                </dt>
-                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-slate-600">
-                  <p className="flex-auto">Built on modern cryptography for high performance, low latency, and instant connections.</p>
-                </dd>
-              </div>
-
-              <div className="flex flex-col rounded-2xl bg-slate-50 p-8 border border-slate-100 hover:shadow-md transition-shadow">
-                <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-slate-900">
-                  Trust-driven
-                </dt>
-                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-slate-600">
-                  <p className="flex-auto">Select providers based on region, speed, uptime, and community reputation.</p>
-                </dd>
-              </div>
-
+    {/* How it works */}
+    <div style={{ borderTop: '1px solid var(--border)', padding: '60px 24px' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto' }}>
+        <p className="section-title" style={{ textAlign: 'center', marginBottom: 32 }}>How it works</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+          {[
+            { step: '01', title: 'Provider registers', desc: 'Sign up as a provider, enter your WireGuard IP, port, key, and price per GB.' },
+            { step: '02', title: 'List on marketplace', desc: 'Toggle your node as listed. Clients can now discover and connect to you.' },
+            { step: '03', title: 'Client connects', desc: 'Browse listed providers, pick one, and download your WireGuard config instantly.' },
+          ].map(item => (
+            <div key={item.step} className="card" style={{ padding: 20 }}>
+              <div style={{
+                fontWeight: 800, fontSize: '1.5rem', color: 'var(--accent)',
+                fontFamily: 'monospace', marginBottom: 10
+              }}>{item.step}</div>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 6 }}>{item.title}</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>{item.desc}</p>
             </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>
-  );
-};
+  </div>
+);
 
 export default Landing;
