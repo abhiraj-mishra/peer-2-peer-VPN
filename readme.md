@@ -1,64 +1,88 @@
-# Peer-to-Peer VPN 🔐🌐
+# Peer-to-Peer VPN Marketplace 🔐🌐
 
-> A decentralized VPN platform built using WireGuard that enables users to create, manage, and connect secure peer-to-peer VPN tunnels without relying on centralized VPN infrastructure.
-
-![Peer-to-Peer VPN](./screenshot.png)
-
----
+> A decentralized WireGuard-based VPN marketplace that connects VPN Providers (Exit Nodes) with Clients through automatically generated peer-to-peer configurations.
 
 ## Overview
 
-Peer-to-Peer VPN is a secure networking solution that allows users to establish encrypted connections directly between devices using the WireGuard protocol.
+Peer-to-Peer VPN Marketplace is a platform that allows users to monetize their internet connection by acting as VPN providers while enabling clients to securely connect through WireGuard tunnels.
 
-Unlike traditional VPN services that route all traffic through centralized servers, this platform enables direct peer-to-peer communication, reducing latency, improving privacy, and giving users full control over their network.
+Unlike traditional VPN services that rely on centralized servers, this platform acts as a control plane that coordinates secure connections between independent providers and clients.
 
-The application provides a user-friendly web interface for managing VPN peers, generating WireGuard configurations, monitoring active tunnels, and maintaining secure connections.
+The system manages:
+
+- Provider registration
+- WireGuard key exchange
+- Configuration generation
+- Tunnel management
+- Connection verification
+- Marketplace listings
+
+WireGuard itself handles the encrypted VPN tunnel while the platform handles peer discovery and coordination. :contentReference[oaicite:0]{index=0}
+
+---
+
+## How It Works
+
+### Provider Workflow
+
+1. Generate a WireGuard key pair.
+2. Register on the platform.
+3. Submit:
+   - Public IP Address
+   - WireGuard Public Key
+   - Listening Port
+   - Pricing Information
+4. Enable port forwarding on the router.
+5. Become available in the marketplace.
+
+### Client Workflow
+
+1. Browse available VPN providers.
+2. Select a provider.
+3. Submit WireGuard Public Key.
+4. Download generated WireGuard configuration.
+5. Import configuration into WireGuard.
+6. Connect securely through the selected provider.
+
+The platform automatically generates peer configurations for both parties and establishes a secure tunnel. :contentReference[oaicite:1]{index=1}
 
 ---
 
 ## Features
 
-### 🔒 Secure WireGuard Tunnels
+### VPN Marketplace
 
-- End-to-end encrypted communication
-- Modern cryptographic standards
-- Lightweight and high-performance VPN protocol
-- Secure peer authentication
+- Provider listings
+- Node selection
+- Provider pricing
+- Connection management
 
-### 👥 Peer Management
+### WireGuard Integration
 
-- Add and manage VPN peers
 - Automatic configuration generation
-- Public/Private key management
-- Peer discovery and registration
+- Public key management
+- Peer configuration
+- Tunnel establishment
 
-### 🌐 Direct Peer-to-Peer Connectivity
-
-- No centralized VPN routing
-- Lower latency connections
-- Improved privacy
-- Efficient bandwidth utilization
-
-### 📊 Tunnel Monitoring
-
-- Active tunnel tracking
-- Connection status monitoring
-- Peer information management
-- Tunnel configuration storage
-
-### 🎨 Web Dashboard
-
-- Modern responsive UI
-- Easy VPN management
-- Simple configuration workflow
-- User-friendly interface
-
-### 🔑 Authentication System
+### Authentication
 
 - User registration
-- Secure login
+- User login
+- Protected routes
 - Session management
-- Protected API routes
+
+### Connection Verification
+
+- Active tunnel validation
+- Handshake monitoring
+- Connection status tracking
+
+### Dashboard
+
+- Provider dashboard
+- Client dashboard
+- Active tunnel monitoring
+- Marketplace management
 
 ---
 
@@ -69,68 +93,46 @@ The application provides a user-friendly web interface for managing VPN peers, g
 - HTML
 - CSS
 - JavaScript
-- Responsive Dashboard UI
 
 ### Backend
 
 - Node.js
 - Express.js
 
-### Security & Networking
+### VPN Protocol
 
 - WireGuard
-- Public/Private Key Cryptography
-- Secure Tunnel Management
 
-### Data Storage
+### Storage
 
-- JSON-based Configuration Storage
-- Active Tunnel Tracking
-- Client Management System
+- JSON-based storage
+- Client records
+- Provider records
+- Active tunnel tracking
 
 ---
 
-## System Architecture
+## Architecture
 
 ```text
-+----------------------+
-|        User          |
-+----------+-----------+
-           |
-           v
-+----------------------+
-|   Web Dashboard      |
-+----------+-----------+
-           |
-           v
-+----------------------+
-|    Node.js Server    |
-+----------+-----------+
-           |
-    +------+------+
-    |             |
-    v             v
-+---------+   +---------+
-| WireGuard|  | Storage |
-|  Engine  |  |  JSON   |
-+---------+   +---------+
-    |
-    v
-+----------------------+
-| Secure P2P Tunnel    |
-+----------------------+
+Client
+   |
+   v
+Marketplace Platform
+(Control Plane)
+   |
+   +----------------+
+   |                |
+   v                v
+Provider        Configuration
+ Node           Generator
+   |
+   v
+WireGuard Tunnel
+(Client <----> Provider)
 ```
 
----
-
-## How It Works
-
-1. User registers and logs into the platform.
-2. A WireGuard peer configuration is generated.
-3. Peer information is stored securely.
-4. Users exchange public keys and connection details.
-5. WireGuard establishes an encrypted tunnel.
-6. Direct peer-to-peer communication begins.
+The platform coordinates connections but does not route traffic itself. WireGuard handles the encrypted communication between peers. :contentReference[oaicite:2]{index=2}
 
 ---
 
@@ -140,19 +142,14 @@ The application provides a user-friendly web interface for managing VPN peers, g
 peer-2-peer-VPN/
 │
 ├── client/
-│   ├── css/
-│   ├── js/
-│   └── assets/
-│
 ├── controllers/
-│
 ├── middleware/
-│
 ├── routes/
 │
 ├── active_tunnel.json
 ├── clients.json
 ├── provider.json
+│
 ├── index.js
 ├── package.json
 └── README.md
@@ -160,143 +157,120 @@ peer-2-peer-VPN/
 
 ---
 
-## Installation
+## Running the Application
 
-### Clone Repository
+This project consists of:
 
-```bash
-git clone https://github.com/yourusername/peer-2-peer-VPN.git
+- Backend Server (Node.js + Express)
+- Frontend Client
 
-cd peer-2-peer-VPN
-```
-
-### Install Dependencies
+### Terminal 1: Start Backend
 
 ```bash
-npm install
+node index.js
 ```
 
-### Configure Environment Variables
+Backend will start and handle:
 
-Create a `.env` file:
+- Authentication
+- Provider management
+- Client management
+- WireGuard configuration generation
+- Tunnel tracking
 
-```env
-PORT=5000
+---
 
-JWT_SECRET=your_secret_key
-
-SERVER_PUBLIC_IP=your_public_ip
-
-WIREGUARD_INTERFACE=wg0
-```
-
-### Run Application
-
-```bash
-npm start
-```
-
-Development mode:
+### Terminal 2: Start Frontend
 
 ```bash
 npm run dev
 ```
 
----
+Frontend development server will start.
 
-## API Features
-
-### Authentication
-
-- User Registration
-- User Login
-- Session Verification
-
-### VPN Management
-
-- Create VPN Peer
-- Generate WireGuard Configuration
-- Activate Tunnel
-- Monitor Active Connections
-- Remove Peer
-
----
-
-## Example Workflow
-
-### Create a Peer
+Open:
 
 ```text
-1. Register Account
-2. Login
-3. Create VPN Peer
-4. Download WireGuard Configuration
-5. Import Configuration into WireGuard Client
-6. Connect Securely
-```
-
-### Establish Connection
-
-```text
-Peer A  <------Encrypted Tunnel------>  Peer B
+http://localhost:3000
 ```
 
 ---
 
-## Security Features
+### Full Startup Workflow
 
-- WireGuard Encryption
-- JWT Authentication
-- Protected Routes
-- Secure Key Generation
-- Peer Verification
-- Configuration Isolation
+```bash
+# Terminal 1
+node index.js
+
+# Terminal 2
+npm run dev
+```
+
+Once both services are running:
+
+1. Open the frontend in your browser.
+2. Register/Login.
+3. Create or select a VPN provider.
+4. Generate WireGuard configurations.
+5. Establish a secure VPN tunnel.
 
 ---
 
-## Advantages of Peer-to-Peer VPN
+## Example Generated Configuration
 
-### Compared to Traditional VPNs
+```ini
+[Peer]
+PublicKey = PROVIDER_PUBLIC_KEY
 
-| Traditional VPN | Peer-to-Peer VPN |
-|---------------|------------------|
-| Centralized Servers | Direct Connections |
-| Higher Latency | Lower Latency |
-| Monthly Subscription | Self Hosted |
-| Third-Party Trust Required | Full User Control |
-| Shared Infrastructure | Dedicated Peer Tunnel |
+Endpoint = PROVIDER_IP:51820
+
+AllowedIPs = 0.0.0.0/0
+
+PersistentKeepalive = 25
+```
+
+This configuration allows the client to route traffic securely through the selected provider node. :contentReference[oaicite:3]{index=3}
+
+---
+
+## NAT Traversal
+
+To simplify deployment:
+
+- Providers must configure router port forwarding.
+- WireGuard uses `PersistentKeepalive = 25`.
+- Active handshakes keep NAT mappings alive.
+
+This approach avoids the complexity of STUN, ICE, and hole-punching mechanisms while remaining practical for a marketplace MVP. :contentReference[oaicite:4]{index=4}
+
+---
+
+## Security
+
+- WireGuard encryption
+- Public/private key authentication
+- Secure peer communication
+- Protected API routes
+- Tunnel verification
 
 ---
 
 ## Future Improvements
 
-- NAT Traversal Support
-- STUN/TURN Integration
-- Multi-Peer Mesh Networking
-- Real-Time Analytics Dashboard
-- Docker Deployment
-- Kubernetes Support
-- Mobile Applications
-- QR-Based Configuration Sharing
-- WebRTC Integration
+- STUN/TURN support
+- NAT hole punching
+- Cryptocurrency payments
+- Escrow system
+- Provider reputation scores
+- Real-time analytics
+- Multi-hop routing
+- Docker deployment
 
 ---
 
-## Use Cases
+## Disclaimer
 
-- Secure Remote Access
-- Private Team Networks
-- Home Lab Connectivity
-- Remote Development Environments
-- Gaming Networks
-- Secure File Sharing
-- Cross-Network Communication
-
----
-
-## License
-
-Licensed under the GNU General Public License v3.0 (GPL-3.0).
+Providers act as VPN exit nodes. Internet traffic from connected clients appears to originate from the provider's public IP address. Users should understand the legal and security implications before participating in the network. :contentReference[oaicite:5]{index=5}
 
 ---
 
@@ -307,8 +281,6 @@ Licensed under the GNU General Public License v3.0 (GPL-3.0).
 
 ---
 
-## Acknowledgements
+## License
 
-This project is built on top of the WireGuard protocol, providing a modern, fast, and secure foundation for peer-to-peer networking.
-
-> Secure. Decentralized. Fast.
+GNU GPL v3.0
